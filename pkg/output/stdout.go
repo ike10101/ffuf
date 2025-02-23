@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ffuf/ffuf/v2/pkg/ffuf"
@@ -31,6 +32,7 @@ type Stdoutput struct {
 	fuzzkeywords   []string
 	Results        []ffuf.Result
 	CurrentResults []ffuf.Result
+	mu             sync.Mutex // Added mutex for protecting concurrent access
 }
 
 func NewStdoutput(conf *ffuf.Config) *Stdoutput {
@@ -338,9 +340,11 @@ func (s *Stdoutput) Result(resp ffuf.Response) {
 		ResultFile:       resp.ResultFile,
 		Host:             resp.Request.Host,
 	}
+	// Lock the critical section: appending to the slice and printing the result.
+	s.mu.Lock()
 	s.CurrentResults = append(s.CurrentResults, sResult)
-	// Output the result
 	s.PrintResult(sResult)
+	s.mu.Unlock()
 }
 
 func (s *Stdoutput) writeResultToFile(resp ffuf.Response) string {
